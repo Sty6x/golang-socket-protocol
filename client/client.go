@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"net"
 	// "time"
 )
@@ -20,7 +21,8 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	socket_header := Header{Connection_type: "socket", Namespace: "Books", Date_established: "14051239084", User_id: "1239-0asdlkjsd"}
+	socket_header := Header{Connection_type: "socket", Namespace: "Books",
+		Date_established: "14051239084", User_id: uuid.NewString()}
 	encoded_header := encode_request_header(socket_header)
 	conn.Write(encoded_header)
 

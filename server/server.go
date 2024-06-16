@@ -3,15 +3,17 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
+	"go-tcp/internal/utils"
 	"net"
 )
 
 type User struct {
-	ip_addr   string
-	conn      net.Conn
-	namespace string
-	// connection_id string
-	user_id string
+	ip_addr       string
+	conn          net.Conn
+	namespace     string
+	connection_id string
+	user_id       string
 }
 
 type Namespace struct {
@@ -28,8 +30,8 @@ type Header struct {
 
 const PORT = ":8080"
 
-var namespaces = make(map[string]Namespace)
-var user_storage = make(map[string]User)
+var Namespaces = make(map[string]Namespace)
+var Users = make(map[string]User)
 
 func main() {
 	var app = set_server_socket()
@@ -64,32 +66,26 @@ func handle_tcp_connection(conn net.Conn) {
 		fmt.Println("Cant Reaaaad")
 	}
 
-	client_request_header := Header{}
-	header_bytes := []byte(buffer[:bytes_read])
-	decode_err := json.Unmarshal(header_bytes, &client_request_header)
-	if decode_err != nil {
-		fmt.Println("Unable to decode client request header")
-	}
-	new_user := User{ip_addr: conn.RemoteAddr().String(),
-		user_id: client_request_header.User_id, conn: conn,
-		namespace: client_request_header.Namespace}
+	parsed_header := parse_json_header(buffer[:bytes_read])
+	new_user := &User{ip_addr: conn.RemoteAddr().String(),
+		user_id: parsed_header.User_id, conn: conn,
+		namespace: parsed_header.Namespace, connection_id: uuid.NewString()}
 	create_user(new_user)
 }
 
-func create_user(new_user User) {
-	user_storage[new_user.ip_addr] = new_user
-	namespaces["ngee"] = Namespace{name: new_user.namespace}
-	namespaces["What"] = Namespace{name: new_user.namespace}
-	ns, ok := namespaces[new_user.namespace]
+func create_user(new_user *User) {
+	Users[new_user.user_id] = *new_user
+	ns, ok := Namespaces[new_user.namespace]
 	if !ok {
-		namespaces[new_user.namespace] = Namespace{name: new_user.namespace}
+		Namespaces[new_user.namespace] = Namespace{name: new_user.namespace}
 	}
-	fmt.Println(check_existing_user_connection(ns.connected_users, new_user.user_id))
-	fmt.Println(namespaces)
-	if !check_existing_user_connection(ns.connected_users, new_user.user_id) {
+
+	user_exists := utils.Check_existing_user_connection(ns.connected_users, new_user.connection_id)
+	if !user_exists {
 		ns = Namespace{name: new_user.namespace, connected_users: append(ns.connected_users[:], new_user.user_id)}
-		namespaces[new_user.namespace] = ns
+		Namespaces[new_user.namespace] = ns
 	}
+	fmt.Println(Namespaces[new_user.namespace])
 }
 
 func check_existing_user_connection(connections []string, target string) bool {
@@ -99,4 +95,13 @@ func check_existing_user_connection(connections []string, target string) bool {
 		}
 	}
 	return false
+}
+
+func parse_json_header(h []byte) *Header {
+	client_request_header := Header{}
+	err := json.Unmarshal(h, &client_request_header)
+	if err != nil {
+		fmt.Println("Unable to decode client request header")
+	}
+	return &client_request_header
 }
