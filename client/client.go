@@ -14,6 +14,13 @@ type Header struct {
 	Date_established string
 	User_id          string
 }
+type ServerResponseHeader struct {
+	ConnectionType  string
+	Namespace       string
+	ConnectionId    string
+	DateEstablished string
+	Status          string
+}
 
 func main() {
 
@@ -21,10 +28,24 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	socket_header := Header{Connection_type: "socket", Namespace: "Books",
+	socket_header := Header{Connection_type: "socket", Namespace: "NGEE",
 		Date_established: "14051239084", User_id: uuid.NewString()}
 	encoded_header := encode_request_header(socket_header)
 	conn.Write(encoded_header)
+
+	for {
+		buffer := make([]byte, 1024)
+		bytes_read, err := conn.Read(buffer)
+		if err != nil {
+			fmt.Println("Unable to read server message.")
+		}
+		decodeResponseHeader := ServerResponseHeader{}
+		decode_err := json.Unmarshal(buffer[:bytes_read], &decodeResponseHeader)
+		if decode_err != nil {
+			fmt.Println("unable to decode")
+		}
+		fmt.Println(decodeResponseHeader)
+	}
 
 }
 
@@ -38,7 +59,7 @@ func encode_request_header(h Header) []byte {
 	if decode_err != nil {
 		fmt.Println("unable to decode")
 	}
-	fmt.Println(decoded_header)
+	fmt.Printf("Sent: %+v ", decoded_header)
 
 	return encoded_header
 }
