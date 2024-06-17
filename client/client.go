@@ -5,15 +5,18 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"net"
-	// "time"
 )
 
 type Header struct {
+	Protocol        string
 	ConnectionType  string
 	Namespace       string
 	DateEstablished string
 	UserId          string
+	Payload         Payload
 }
+type Payload struct{ any }
+
 type ServerResponseHeader struct {
 	ConnectionType  string
 	Namespace       string
@@ -28,7 +31,7 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	socket_header := Header{ConnectionType: "socket", Namespace: "NGEE",
+	socket_header := Header{ConnectionType: "connect", Protocol: "socket", Namespace: "NGEE",
 		DateEstablished: "14051239084", UserId: uuid.NewString()}
 	encoded_header := encode_request_header(socket_header)
 	conn.Write(encoded_header)

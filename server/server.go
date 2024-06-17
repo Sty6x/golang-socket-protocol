@@ -16,17 +16,34 @@ type User struct {
 	userId       string
 }
 
+func (u *User) writeMessage(msg string) {
+	toBytes := []byte(msg)
+	u.conn.Write(toBytes)
+}
+
 type Namespace struct {
 	name           string
 	connectedUsers []string
 }
 
-type ClientConnectHeader struct {
+func (ns *Namespace) notifyUsers(userTcp *User) {
+	for _, value := range Users {
+		if value.namespace == ns.name {
+			fmt.Printf("Connection: %+v ", value)
+		}
+	}
+}
+
+type ClientHeader struct {
+	Protocol        string
 	ConnectionType  string
 	Namespace       string
 	DateEstablished string
 	UserId          string
+	Payload         Payload
 }
+
+type Payload struct{ Data any }
 
 type ServerResponseHeader struct {
 	ConnectionType  string
@@ -57,15 +74,20 @@ func setServerSocket() net.Listener {
 func startServer(server net.Listener) {
 
 	fmt.Println("Server start at localhost:8080")
+	// Listens, Reads and Writes to the client.
 	for {
 		conn, err := server.Accept()
 		if err != nil {
 			fmt.Println("Unable to create a tcp connection")
 		}
-		userTcp := handleTcpConnection(conn)
-		fmt.Printf("Recevied: %+v ", userTcp)
+		userTcp, connectionType := handleTcpConnection(conn)
 		if userTcp != nil {
-			establishSocketConnection(userTcp)
+			if connectionType == "connect" {
+				establishSocketConnection(userTcp)
+				ns, _ := Namespaces[userTcp.namespace]
+				go ns.notifyUsers(userTcp)
+			}
+			// handle connected client messages
 		}
 	}
 }
@@ -81,12 +103,12 @@ func establishSocketConnection(user *User) {
 	user.conn.Write(encodedHeader)
 }
 
-func handleTcpConnection(conn net.Conn) *User {
+func handleTcpConnection(conn net.Conn) (*User, string) {
 	buffer := make([]byte, 1024)
 	bytesRead, err := conn.Read(buffer)
 	if err != nil {
 		fmt.Println("Cant Reaaaad")
-		return nil
+		return nil, ""
 	}
 	parsedHeader := parseJsonHeader(buffer[:bytesRead])
 	user, userExists := Users[parsedHeader.UserId]
@@ -95,9 +117,9 @@ func handleTcpConnection(conn net.Conn) *User {
 			userId: parsedHeader.UserId, conn: conn,
 			namespace: parsedHeader.Namespace, connectionId: uuid.NewString()}
 		createUser(newUser)
-		return newUser
+		return newUser, parsedHeader.ConnectionType
 	}
-	return &user
+	return &user, parsedHeader.ConnectionType
 }
 
 func createUser(newUser *User) {
@@ -111,12 +133,11 @@ func createUser(newUser *User) {
 	if !userExists {
 		ns = Namespace{name: newUser.namespace, connectedUsers: append(ns.connectedUsers[:], newUser.connectionId)}
 		Namespaces[newUser.namespace] = ns
-		fmt.Println(Namespaces[newUser.namespace])
 	}
 }
 
-func parseJsonHeader(h []byte) *ClientConnectHeader {
-	clientRequestHeader := ClientConnectHeader{}
+func parseJsonHeader(h []byte) *ClientHeader {
+	clientRequestHeader := ClientHeader{}
 	err := json.Unmarshal(h, &clientRequestHeader)
 	if err != nil {
 		fmt.Println("Unable to decode client request header")
