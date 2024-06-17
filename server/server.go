@@ -63,7 +63,7 @@ func startServer(server net.Listener) {
 			fmt.Println("Unable to create a tcp connection")
 		}
 		userTcp := handleTcpConnection(conn)
-		fmt.Println(Namespaces[userTcp.namespace])
+		fmt.Printf("Recevied: %+v ", userTcp)
 		if userTcp != nil {
 			establishSocketConnection(userTcp)
 		}
@@ -71,7 +71,9 @@ func startServer(server net.Listener) {
 }
 
 func establishSocketConnection(user *User) {
-	serverResponseHeader := ServerResponseHeader{Namespace: user.namespace, DateEstablished: "412908124", Status: "OK", ConnectionId: user.connectionId, ConnectionType: "socket"}
+	serverResponseHeader := ServerResponseHeader{Namespace: user.namespace,
+		DateEstablished: "412908124", Status: "OK", ConnectionId: user.connectionId,
+		ConnectionType: "socket"}
 	encodedHeader, err := json.Marshal(serverResponseHeader)
 	if err != nil {
 		fmt.Println("Unable to encode server response header.")
@@ -107,8 +109,9 @@ func createUser(newUser *User) {
 
 	userExists := utils.CheckExistingUserConnnection(ns.connectedUsers, newUser.connectionId)
 	if !userExists {
-		ns = Namespace{name: newUser.namespace, connectedUsers: append(ns.connectedUsers[:], newUser.userId)}
+		ns = Namespace{name: newUser.namespace, connectedUsers: append(ns.connectedUsers[:], newUser.connectionId)}
 		Namespaces[newUser.namespace] = ns
+		fmt.Println(Namespaces[newUser.namespace])
 	}
 }
 
