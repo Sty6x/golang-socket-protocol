@@ -15,7 +15,7 @@ type Header struct {
 	UserId          string
 	Payload         Payload
 }
-type Payload struct{ any }
+type Payload struct{ Data any }
 
 type ServerResponseHeader struct {
 	ConnectionType  string
@@ -23,6 +23,7 @@ type ServerResponseHeader struct {
 	ConnectionId    string
 	DateEstablished string
 	Status          string
+	Payload         Payload
 }
 
 func main() {
@@ -31,7 +32,7 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	socket_header := Header{ConnectionType: "connect", Protocol: "socket", Namespace: "NGEE",
+	socket_header := Header{ConnectionType: "push", Protocol: "socket", Namespace: "NGEE",
 		DateEstablished: "14051239084", UserId: uuid.NewString()}
 	encoded_header := encode_request_header(socket_header)
 	conn.Write(encoded_header)
@@ -42,14 +43,21 @@ func main() {
 		if err != nil {
 			fmt.Println("Unable to read server message.")
 		}
-		decodeResponseHeader := ServerResponseHeader{}
-		decode_err := json.Unmarshal(buffer[:bytes_read], &decodeResponseHeader)
+		serverResponse := ServerResponseHeader{}
+		decode_err := json.Unmarshal(buffer[:bytes_read], &serverResponse)
 		if decode_err != nil {
 			fmt.Println("unable to decode")
 		}
-		fmt.Println(decodeResponseHeader)
+		fmt.Println(serverResponse)
+		if serverResponse.Status != "OK" {
+			fmt.Println("Connection Status: Failed")
+			continue
+		}
+		if serverResponse.ConnectionType == "OK" {
+			fmt.Println(serverResponse.ConnectionId)
+			fmt.Println(serverResponse.Payload.Data)
+		}
 	}
-
 }
 
 func encode_request_header(h Header) []byte {
@@ -57,12 +65,5 @@ func encode_request_header(h Header) []byte {
 	if err != nil {
 		fmt.Println("Unable to encode socket header")
 	}
-	decoded_header := Header{}
-	decode_err := json.Unmarshal(encoded_header, &decoded_header)
-	if decode_err != nil {
-		fmt.Println("unable to decode")
-	}
-	fmt.Printf("Sent: %+v ", decoded_header)
-
 	return encoded_header
 }

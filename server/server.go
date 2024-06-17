@@ -26,14 +26,6 @@ type Namespace struct {
 	connectedUsers []string
 }
 
-func (ns *Namespace) notifyUsers(userTcp *User) {
-	for _, value := range Users {
-		if value.namespace == ns.name {
-			fmt.Printf("Connection: %+v ", value)
-		}
-	}
-}
-
 type ClientHeader struct {
 	Protocol        string
 	ConnectionType  string
@@ -51,6 +43,7 @@ type ServerResponseHeader struct {
 	ConnectionId    string
 	DateEstablished string
 	Status          string
+	Payload         Payload
 }
 
 const PORT = ":8080"
@@ -61,6 +54,23 @@ var Users = make(map[string]User)
 func main() {
 	var app = setServerSocket()
 	startServer(app)
+}
+
+func (ns *Namespace) notifyUsers(userTcp *User) {
+	responseHeader := ServerResponseHeader{Namespace: userTcp.namespace,
+		DateEstablished: "412908124", Status: "OK", ConnectionId: userTcp.connectionId,
+		ConnectionType: "push"}
+	encodedHeader, err := json.Marshal(responseHeader)
+	if err != nil {
+		fmt.Println("Unable to encode notification header")
+		return
+	}
+	for _, user := range Users {
+		if user.namespace == ns.name && user.userId != userTcp.userId {
+			fmt.Printf("Connection: %+v ", user)
+			user.conn.Write(encodedHeader)
+		}
+	}
 }
 
 func setServerSocket() net.Listener {
@@ -95,7 +105,7 @@ func startServer(server net.Listener) {
 func establishSocketConnection(user *User) {
 	serverResponseHeader := ServerResponseHeader{Namespace: user.namespace,
 		DateEstablished: "412908124", Status: "OK", ConnectionId: user.connectionId,
-		ConnectionType: "socket"}
+		ConnectionType: "connect"}
 	encodedHeader, err := json.Marshal(serverResponseHeader)
 	if err != nil {
 		fmt.Println("Unable to encode server response header.")
