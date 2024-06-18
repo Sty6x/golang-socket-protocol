@@ -3,7 +3,7 @@
 Implementing my own websocket using the net package in GO
 
 ### What it does
-A server can receive a request from the client to establish a tcp connection and to connect to a user defined namespace, a namespace contains other clients that can send and receive messages pushed by other clients to the server, the server only pushes messages from to the clients that are connected to the same namespace, clients outside the namespace will be ignored.
+A server can receive a request from the client to establish a tcp connection and to connect a user to a user-defined namespace, a namespace contains other clients that can send and receive messages pushed by other clients to the server, the server only pushes messages from to the clients that are connected to the same namespace, clients outside the namespace will be ignored.
 
 
 ### Why I built this
