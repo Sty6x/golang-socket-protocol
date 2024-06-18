@@ -3,16 +3,20 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
 	"go-tcp/internal/utils"
 	"go-tcp/internal/utils/messageTypes"
 	"net"
+	"os"
+
+	"github.com/google/uuid"
 )
 
 type Header struct {
 	Protocol       string
 	ConnectionType string
 }
+
+// make client accept arguments from the command line to
 
 func main() {
 	var client net.Conn = initializeClient()
@@ -62,9 +66,10 @@ func initializeClient() net.Conn {
 }
 
 func establishConnection(conn net.Conn) bool {
+	var namespace string = os.Args[1]
 	socket_header := message.Request{
 		Header:    message.Header{ConnectionType: "connect", Protocol: "websocket"},
-		Namespace: "neovim-enjoyers", DateEstablished: "14051239084",
+		Namespace: namespace, DateEstablished: "14051239084",
 		UserId: uuid.NewString()}
 	json := &utils.Json{}
 	encodedHeader := json.Encode(socket_header)
