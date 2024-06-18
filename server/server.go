@@ -4,7 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
-	"go-tcp/internal/utils"
+	"go-tcp/internal/utils/messageTypes"
+	"go-tcp/internal/utils/serverUtils"
 	"net"
 )
 
@@ -21,34 +22,6 @@ type Namespace struct {
 	connectedUsers []string
 }
 
-type Header struct {
-	Protocol       string
-	ConnectionType string
-}
-
-type Request struct {
-	Header
-	Namespace       string
-	DateEstablished string
-	UserId          string
-}
-
-type Response struct {
-	Header
-	ConnectionId    string
-	DateEstablished string
-	Status          string
-}
-
-type PushMessage struct {
-	Header
-	Status          string
-	UserId          string
-	Namespace       string
-	DateEstablished string
-	Payload         string
-}
-
 const PORT = ":8080"
 
 var Namespaces = make(map[string]Namespace)
@@ -60,8 +33,8 @@ func main() {
 }
 
 func (ns *Namespace) notifyUsers(userTcp *User) {
-	responseHeader := PushMessage{
-		Header:    Header{Protocol: "Websocket", ConnectionType: "push"},
+	responseHeader := message.PushMessage{
+		Header:    message.Header{Protocol: "Websocket", ConnectionType: "push"},
 		Namespace: userTcp.namespace,
 		Status:    "OK",
 		UserId:    userTcp.userId,
@@ -73,7 +46,7 @@ func (ns *Namespace) notifyUsers(userTcp *User) {
 	}
 	for _, user := range Users {
 		if user.namespace == ns.name && user.userId != userTcp.userId {
-			fmt.Printf("\nConnection: %+v ", user)
+			fmt.Printf("\nConnection: %+v \n", user)
 			user.conn.Write(encodedHeader)
 		}
 	}
@@ -103,14 +76,15 @@ func startServer(server net.Listener) {
 				ns, _ := Namespaces[userTcp.namespace]
 				go ns.notifyUsers(userTcp)
 			}
+			// TODO
 			// handle connected client messages
 		}
 	}
 }
 
 func establishSocketConnection(user *User) {
-	serverResponseHeader := Response{
-		Header:          Header{Protocol: "Websocket", ConnectionType: "connect"},
+	serverResponseHeader := message.Response{
+		Header:          message.Header{Protocol: "Websocket", ConnectionType: "connect"},
 		DateEstablished: "412908124",
 		Status:          "OK",
 		ConnectionId:    user.connectionId,
@@ -149,7 +123,7 @@ func createUser(newUser *User) {
 		Namespaces[newUser.namespace] = Namespace{name: newUser.namespace}
 	}
 
-	userExists := utils.CheckExistingUserConnnection(ns.connectedUsers, newUser.connectionId)
+	userExists := server.CheckExistingUserConnnection(ns.connectedUsers, newUser.connectionId)
 	if !userExists {
 		ns = Namespace{name: newUser.namespace, connectedUsers: append(ns.connectedUsers[:],
 			newUser.connectionId)}
@@ -159,8 +133,8 @@ func createUser(newUser *User) {
 	fmt.Printf("\n%v", Namespaces[newUser.namespace])
 }
 
-func parseClientRequest(h []byte) *Request {
-	clientRequestHeader := Request{}
+func parseClientRequest(h []byte) *message.Request {
+	clientRequestHeader := message.Request{}
 	err := json.Unmarshal(h, &clientRequestHeader)
 	if err != nil {
 		fmt.Println("Unable to decode client request header")

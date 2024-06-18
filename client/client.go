@@ -4,35 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
+	"go-tcp/internal/utils"
+	"go-tcp/internal/utils/messageTypes"
 	"net"
 )
 
 type Header struct {
 	Protocol       string
 	ConnectionType string
-}
-
-type Request struct {
-	Header
-	Namespace       string
-	DateEstablished string
-	UserId          string
-}
-
-type Response struct {
-	Header
-	ConnectionId    string
-	DateEstablished string
-	Status          string
-}
-
-type PushMessage struct {
-	Header
-	Status          string
-	UserId          string
-	Namespace       string
-	DateEstablished string
-	Payload         string
 }
 
 func main() {
@@ -51,14 +30,18 @@ func app(client net.Conn) {
 			fmt.Println("Error occured while reading buffer in the app function")
 			break
 		}
-		pushMessage := PushMessage{}
+		pushMessage := message.PushMessage{}
 		pushErr := json.Unmarshal(buffer[:bytes_read], &pushMessage)
 		if pushErr != nil {
 			fmt.Println("Error occured while decoding push header in the app function")
 			break
 		}
+
+		// TODO
+		// figure out if server push or client push header
+
 		if pushMessage.Header.ConnectionType == "push" {
-			fmt.Printf("Server Message: User %s has connected in the %s namespace",
+			fmt.Printf("Server Message: User %s has connected in the %s namespace\n",
 				pushMessage.UserId, pushMessage.Namespace)
 		}
 	}
@@ -79,10 +62,12 @@ func initializeClient() net.Conn {
 }
 
 func establishConnection(conn net.Conn) bool {
-	socket_header := Request{
-		Header:    Header{ConnectionType: "connect", Protocol: "websocket"},
-		Namespace: "neovim-enjoyers", DateEstablished: "14051239084", UserId: uuid.NewString()}
-	encodedHeader := encodeRequestHeader(socket_header)
+	socket_header := message.Request{
+		Header:    message.Header{ConnectionType: "connect", Protocol: "websocket"},
+		Namespace: "neovim-enjoyers", DateEstablished: "14051239084",
+		UserId: uuid.NewString()}
+	json := &utils.Json{}
+	encodedHeader := json.Encode(socket_header)
 	conn.Write(encodedHeader)
 	for {
 		buffer := make([]byte, 1024)
@@ -91,9 +76,8 @@ func establishConnection(conn net.Conn) bool {
 			fmt.Println("Unable to read server message.")
 			return false
 		}
-		serverResponse := Response{}
-		decode_err := json.Unmarshal(buffer[:bytes_read], &serverResponse)
-		if decode_err != nil {
+		serverResponse := json.Decode(buffer[:bytes_read])
+		if serverResponse == nil {
 			fmt.Println("unable to decode")
 			continue
 		}
@@ -106,12 +90,4 @@ func establishConnection(conn net.Conn) bool {
 		}
 		return true
 	}
-}
-
-func encodeRequestHeader(h Request) []byte {
-	encodedHeader, err := json.Marshal(h)
-	if err != nil {
-		fmt.Println("Unable to encode socket header")
-	}
-	return encodedHeader
 }

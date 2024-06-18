@@ -1,4 +1,4 @@
-package utils
+package server
 
 func CheckExistingUserConnnection(connections []string, target string) bool {
 	for _, id := range connections {
