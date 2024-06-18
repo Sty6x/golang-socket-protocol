@@ -7,55 +7,83 @@ import (
 	"net"
 )
 
-type RequestHeader struct {
-	Protocol        string
-	ConnectionType  string
+type Header struct {
+	Protocol       string
+	ConnectionType string
+}
+
+type Request struct {
+	Header
 	Namespace       string
 	DateEstablished string
 	UserId          string
 }
-type Payload struct{ Data any }
 
-type ServerResponseHeader struct {
-	ConnectionType  string
-	Namespace       string
+type Response struct {
+	Header
 	ConnectionId    string
-	UserId          string
 	DateEstablished string
 	Status          string
 }
 
-type PushHeader struct {
-	ConnectionType  string
+type PushMessage struct {
+	Header
+	Status          string
+	UserId          string
 	Namespace       string
-	UserId          string
 	DateEstablished string
-	Status          string
-	Payload         Payload
+	Payload         string
 }
-
-// ConnectionType, Namespace, Payload, ConnectionId
 
 func main() {
+	var client net.Conn = initializeClient()
+	if client == nil {
+		fmt.Println("Unable to connect to the server at this moment.")
+	}
+	app(client)
+}
+
+func app(client net.Conn) {
+	for {
+		buffer := make([]byte, 1024)
+		bytes_read, readErr := client.Read(buffer)
+		if readErr != nil {
+			fmt.Println("Error occured while reading buffer in the app function")
+			break
+		}
+		pushMessage := PushMessage{}
+		pushErr := json.Unmarshal(buffer[:bytes_read], &pushMessage)
+		if pushErr != nil {
+			fmt.Println("Error occured while decoding push header in the app function")
+			break
+		}
+		if pushMessage.Header.ConnectionType == "push" {
+			fmt.Printf("Server Message: User %s has connected in the %s namespace",
+				pushMessage.UserId, pushMessage.Namespace)
+		}
+	}
+}
+
+func initializeClient() net.Conn {
 	conn, err := net.Dial("tcp", "localhost:8080")
 	if err != nil {
 		fmt.Println(err)
 	}
 	isConnected := establishConnection(conn)
-
-	fmt.Println(isConnected)
-	if isConnected {
-		fmt.Println("Client connected")
+	if !isConnected {
+		fmt.Println("Unable to connect to the server at this moment.")
+		return nil
 	}
+	fmt.Println("\nClient connected")
+	return conn
 }
 
 func establishConnection(conn net.Conn) bool {
-	socket_header := RequestHeader{ConnectionType: "connect", Protocol: "websocket",
+	socket_header := Request{
+		Header:    Header{ConnectionType: "connect", Protocol: "websocket"},
 		Namespace: "neovim-enjoyers", DateEstablished: "14051239084", UserId: uuid.NewString()}
-	encoded_header := encode_request_header(socket_header)
-	conn.Write(encoded_header)
-	// use this loop to only listen to the server's response of client's initial request
-
+	encodedHeader := encodeRequestHeader(socket_header)
+	conn.Write(encodedHeader)
 	for {
 		buffer := make([]byte, 1024)
 		bytes_read, err := conn.Read(buffer)
@@ -63,10 +91,13 @@ func establishConnection(conn net.Conn) bool {
 			fmt.Println("Unable to read server message.")
 			return false
 		}
-		serverResponse := ServerResponseHeader{}
+		serverResponse := Response{}
 		decode_err := json.Unmarshal(buffer[:bytes_read], &serverResponse)
 		if decode_err != nil {
 			fmt.Println("unable to decode")
+			continue
+		}
+		if serverResponse.Header.ConnectionType != "connect" {
 			continue
 		}
 		if serverResponse.Status != "OK" {
@@ -77,16 +108,10 @@ func establishConnection(conn net.Conn) bool {
 	}
 }
 
-// use this to get push message from server
-// if serverResponse.ConnectionType == "push" {
-// 	fmt.Printf("\nServer Message: %s has connected to %s Namespace",
-// 		serverResponse.UserId, serverResponse.Namespace)
-// }
-
-func encode_request_header(h RequestHeader) []byte {
-	encoded_header, err := json.Marshal(h)
+func encodeRequestHeader(h Request) []byte {
+	encodedHeader, err := json.Marshal(h)
 	if err != nil {
 		fmt.Println("Unable to encode socket header")
 	}
-	return encoded_header
+	return encodedHeader
 }

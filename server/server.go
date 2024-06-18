@@ -21,32 +21,32 @@ type Namespace struct {
 	connectedUsers []string
 }
 
-type ClientHeader struct {
-	Protocol        string
-	ConnectionType  string
+type Header struct {
+	Protocol       string
+	ConnectionType string
+}
+
+type Request struct {
+	Header
 	Namespace       string
 	DateEstablished string
 	UserId          string
-	Payload         Payload
 }
 
-type Payload struct{ Data any }
-
-type ServerResponseHeader struct {
-	ConnectionType  string
-	Namespace       string
+type Response struct {
+	Header
 	ConnectionId    string
 	DateEstablished string
-	UserId          string
 	Status          string
-	Payload         Payload
 }
 
-type NotifHeader struct {
-	Namespace      string
-	UserId         string
-	Status         string
-	ConnectionType string
+type PushMessage struct {
+	Header
+	Status          string
+	UserId          string
+	Namespace       string
+	DateEstablished string
+	Payload         string
 }
 
 const PORT = ":8080"
@@ -60,8 +60,12 @@ func main() {
 }
 
 func (ns *Namespace) notifyUsers(userTcp *User) {
-	responseHeader := NotifHeader{Namespace: userTcp.namespace,
-		Status: "OK", UserId: userTcp.userId, ConnectionType: "push"}
+	responseHeader := PushMessage{
+		Header:    Header{Protocol: "Websocket", ConnectionType: "push"},
+		Namespace: userTcp.namespace,
+		Status:    "OK",
+		UserId:    userTcp.userId,
+	}
 	encodedHeader, err := json.Marshal(responseHeader)
 	if err != nil {
 		fmt.Println("Unable to encode notification header")
@@ -105,9 +109,12 @@ func startServer(server net.Listener) {
 }
 
 func establishSocketConnection(user *User) {
-	serverResponseHeader := ServerResponseHeader{Namespace: user.namespace,
-		DateEstablished: "412908124", Status: "OK", ConnectionId: user.connectionId,
-		ConnectionType: "webconnect"}
+	serverResponseHeader := Response{
+		Header:          Header{Protocol: "Websocket", ConnectionType: "connect"},
+		DateEstablished: "412908124",
+		Status:          "OK",
+		ConnectionId:    user.connectionId,
+	}
 	encodedHeader, err := json.Marshal(serverResponseHeader)
 	if err != nil {
 		fmt.Println("Unable to encode server response header.")
@@ -122,7 +129,7 @@ func handleTcpConnection(conn net.Conn) (*User, string) {
 		fmt.Println("Cant Reaaaad")
 		return nil, ""
 	}
-	parsedHeader := parseJsonHeader(buffer[:bytesRead])
+	parsedHeader := parseClientRequest(buffer[:bytesRead])
 	user, userExists := Users[parsedHeader.UserId]
 	if !userExists {
 		newUser := &User{ipAddr: conn.RemoteAddr().String(),
@@ -152,8 +159,8 @@ func createUser(newUser *User) {
 	fmt.Printf("\n%v", Namespaces[newUser.namespace])
 }
 
-func parseJsonHeader(h []byte) *ClientHeader {
-	clientRequestHeader := ClientHeader{}
+func parseClientRequest(h []byte) *Request {
+	clientRequestHeader := Request{}
 	err := json.Unmarshal(h, &clientRequestHeader)
 	if err != nil {
 		fmt.Println("Unable to decode client request header")
