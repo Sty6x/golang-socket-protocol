@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
-	"go-tcp/internal/utils/messageTypes"
-	"go-tcp/internal/utils/serverUtils"
+	"go-tcp/internal/utils/message_types"
+	"go-tcp/internal/utils/server_utils"
 	"net"
 )
 

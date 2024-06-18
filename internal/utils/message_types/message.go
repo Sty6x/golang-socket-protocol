@@ -26,4 +26,5 @@ type PushMessage struct {
 	Namespace       string
 	DateEstablished string
 	Payload         string
+	ConnectionId    string
 }
