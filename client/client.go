@@ -58,13 +58,10 @@ func main() {
 		fmt.Println("Unable to connect to the server at this moment.")
 	}
 	inputChan := make(chan string)
-	go notifyConnection(user.conn) // listening to the server
 	go inputLoop(inputChan)
 	go user.PushMessage(inputChan)
-	fmt.Println("Not connected")
-	for {
-	}
-	// close(inputChan)
+	serverListener(user.conn) // listening to the server
+	close(inputChan)
 }
 
 func inputLoop(inputChan chan string) {
@@ -80,20 +77,24 @@ func inputLoop(inputChan chan string) {
 	}
 }
 
-func notifyConnection(clientConn net.Conn) {
-	buffer := make([]byte, 1024)
-	bytes_read, readErr := clientConn.Read(buffer)
-	if readErr != nil {
-		fmt.Println("Error occured while reading buffer in the app function")
-	}
-	pushMessage := message.PushMessage{}
-	pushErr := json.Unmarshal(buffer[:bytes_read], &pushMessage)
-	if pushErr != nil {
-		fmt.Println("Error occured while decoding push header in the app function")
-	}
-	if pushMessage.Header.ConnectionType == "push" {
-		fmt.Printf("Server Message: User %s has connected in the %s namespace\n",
-			pushMessage.UserId, pushMessage.Namespace)
+func serverListener(clientConn net.Conn) {
+	for {
+		buffer := make([]byte, 1024)
+		bytes_read, readErr := clientConn.Read(buffer)
+		if readErr != nil {
+			fmt.Println("Error occured while reading buffer in the app function")
+			continue
+		}
+		pushMessage := message.PushMessage{}
+		pushErr := json.Unmarshal(buffer[:bytes_read], &pushMessage)
+		if pushErr != nil {
+			fmt.Println("Error occured while decoding push header in the app function")
+			continue
+		}
+		if pushMessage.Header.ConnectionType == "push" {
+			fmt.Printf("Server Message: User %s has connected in the %s namespace\n",
+				pushMessage.UserId, pushMessage.Namespace)
+		}
 	}
 }
 

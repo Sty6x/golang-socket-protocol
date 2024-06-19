@@ -30,13 +30,6 @@ var Users = make(map[string]User)
 
 func main() {
 	var app = setServerSocket()
-
-	// having two listeners causes problems
-	// - listening for websocket connections
-	// - listening for push messages
-
-	// use a single go routine or runnign process to listen to all of the requests from the client
-
 	clientMessageBuffer := make(chan message.PushMessage, BUFFERSIZE)
 	go func() {
 		for l := range clientMessageBuffer {
@@ -76,23 +69,31 @@ func setServerSocket() net.Listener {
 	return listener
 }
 
+func bufferReader(conn net.Conn) []byte {
+	buffer := make([]byte, 1024)
+	bytesRead, buffErr := conn.Read(buffer)
+	if buffErr != nil {
+		fmt.Println("Cant Reaaaad")
+		return nil
+	}
+	return buffer[:bytesRead]
+}
+
 // server should handle listening to every connection types from the client
 func startServer(server net.Listener, messageBuffer chan message.PushMessage) {
 
 	fmt.Println("Server start at localhost:8080")
 	// Listens, Reads and Writes to the client.
 	for {
-
 		conn, err := server.Accept()
 		if err != nil {
 			fmt.Println("Unable to create a tcp connection")
 		}
-		buffer := make([]byte, 1024)
-		bytesRead, buffErr := conn.Read(buffer)
-		if buffErr != nil {
-			fmt.Println("Cant Reaaaad")
+		buffer := bufferReader(conn)
+		if buffer != nil {
+			fmt.Println("Unable to read client request buffer.")
 		}
-		userTcp, connectionType := establishTcpConnection(conn, buffer[:bytesRead])
+		userTcp, connectionType := establishTcpConnection(conn, buffer)
 		if userTcp != nil {
 			if connectionType == "connect" {
 				successSocketConnection(userTcp)
@@ -101,14 +102,12 @@ func startServer(server net.Listener, messageBuffer chan message.PushMessage) {
 			}
 			if connectionType == "push" {
 				clientMsg := message.PushMessage{}
-				err := json.Unmarshal(buffer[:bytesRead], &clientMsg)
+				err := json.Unmarshal(buffer, &clientMsg)
 				if err != nil {
 					fmt.Println("Unable to decode client request header")
 				}
 				messageBuffer <- clientMsg
 			}
-			// TODO
-			// handle connected client messages
 		}
 	}
 }
