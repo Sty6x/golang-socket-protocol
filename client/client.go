@@ -38,6 +38,14 @@ func (u *User) PushMessage(inputChan chan string) {
 			DateEstablished: "90123789035478",
 		}
 		fmt.Printf("Push Message: %+v", clientMsg)
+		encodedHeader, jsonErr := json.Marshal(clientMsg)
+		if jsonErr != nil {
+			fmt.Println("Unable to encode socket header")
+		}
+		_, writeErr := u.conn.Write(encodedHeader)
+		if writeErr != nil {
+			fmt.Println("Unable to encode socket header")
+		}
 	}
 
 }
@@ -47,13 +55,11 @@ func main() {
 	if user == nil {
 		fmt.Println("Unable to connect to the server at this moment.")
 	}
-	go app(user.conn)
-
 	inputChan := make(chan string)
 	go inputLoop(inputChan)
 	go user.PushMessage(inputChan)
-	for {
-	}
+	app(user.conn)
+	close(inputChan)
 }
 
 func inputLoop(inputChan chan string) {

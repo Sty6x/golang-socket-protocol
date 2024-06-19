@@ -29,7 +29,38 @@ var Users = make(map[string]User)
 
 func main() {
 	var app = setServerSocket()
+	clientMessageBuffer := make(chan message.PushMessage)
+
+	go func() {
+		for {
+			conn, err := app.Accept()
+			if err != nil {
+				fmt.Println("Unable to create a tcp connection")
+			}
+			clientMsg := message.PushMessage{}
+			buffer := make([]byte, 1024)
+			bytesRead, readerr := conn.Read(buffer)
+			if readerr != nil {
+				fmt.Println("Unable to create a tcp connection")
+			}
+			jsonErr := json.Unmarshal(buffer[:bytesRead], &clientMsg)
+			if jsonErr != nil {
+				fmt.Println("Unable to decode buffer.")
+			}
+			fmt.Printf("\n\n from Message listener: %+v\n", clientMsg)
+			clientMessageBuffer <- clientMsg
+		}
+
+	}()
+	go func() {
+		for l := range clientMessageBuffer {
+			fmt.Printf("\n\n Push message: %+v\n", l)
+			// fmt.Println(l)
+		}
+	}()
+
 	startServer(app)
+	app.Close()
 }
 
 func (ns *Namespace) notifyUsers(userTcp *User) {
@@ -69,10 +100,10 @@ func startServer(server net.Listener) {
 		if err != nil {
 			fmt.Println("Unable to create a tcp connection")
 		}
-		userTcp, connectionType := handleTcpConnection(conn)
+		userTcp, connectionType := establishTcpConnection(conn)
 		if userTcp != nil {
 			if connectionType == "connect" {
-				establishSocketConnection(userTcp)
+				successSocketConnection(userTcp)
 				ns, _ := Namespaces[userTcp.namespace]
 				go ns.notifyUsers(userTcp)
 			}
@@ -82,7 +113,7 @@ func startServer(server net.Listener) {
 	}
 }
 
-func establishSocketConnection(user *User) {
+func successSocketConnection(user *User) {
 	serverResponseHeader := message.Response{
 		Header:          message.Header{Protocol: "Websocket", ConnectionType: "connect"},
 		DateEstablished: "412908124",
@@ -96,7 +127,7 @@ func establishSocketConnection(user *User) {
 	user.conn.Write(encodedHeader)
 }
 
-func handleTcpConnection(conn net.Conn) (*User, string) {
+func establishTcpConnection(conn net.Conn) (*User, string) {
 	buffer := make([]byte, 1024)
 	bytesRead, err := conn.Read(buffer)
 	if err != nil {
