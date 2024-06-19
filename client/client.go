@@ -23,8 +23,7 @@ type UserMethods interface {
 }
 
 func (u *User) PushMessage(inputChan chan string) {
-	for {
-		input := <-inputChan
+	for input := range inputChan {
 		if input == "\n" {
 			fmt.Printf("\nDont send an empty string %q\n", input)
 			continue
@@ -40,14 +39,17 @@ func (u *User) PushMessage(inputChan chan string) {
 		fmt.Printf("Push Message: %+v", clientMsg)
 		encodedHeader, jsonErr := json.Marshal(clientMsg)
 		if jsonErr != nil {
-			fmt.Println("Unable to encode socket header")
+			fmt.Println("Unable to encode push message")
 		}
+		// TODO unable to write back to the server, the line below
+		// is not able to write for some reason, and does not throw any errors
+
+		// running process is not triggering Write even if we're connected with the server
 		_, writeErr := u.conn.Write(encodedHeader)
 		if writeErr != nil {
-			fmt.Println("Unable to encode socket header")
+			fmt.Println("Unable to write push message")
 		}
 	}
-
 }
 
 func main() {
@@ -56,10 +58,13 @@ func main() {
 		fmt.Println("Unable to connect to the server at this moment.")
 	}
 	inputChan := make(chan string)
+	go notifyConnection(user.conn) // listening to the server
 	go inputLoop(inputChan)
 	go user.PushMessage(inputChan)
-	app(user.conn)
-	close(inputChan)
+	fmt.Println("Not connected")
+	for {
+	}
+	// close(inputChan)
 }
 
 func inputLoop(inputChan chan string) {
@@ -75,26 +80,20 @@ func inputLoop(inputChan chan string) {
 	}
 }
 
-func app(clientConn net.Conn) {
-	for {
-		buffer := make([]byte, 1024)
-		bytes_read, readErr := clientConn.Read(buffer)
-		if readErr != nil {
-			fmt.Println("Error occured while reading buffer in the app function")
-			break
-		}
-		pushMessage := message.PushMessage{}
-		pushErr := json.Unmarshal(buffer[:bytes_read], &pushMessage)
-		if pushErr != nil {
-			fmt.Println("Error occured while decoding push header in the app function")
-			break
-		}
-		// TODO
-		// figure out if server push or client push header
-		if pushMessage.Header.ConnectionType == "push" {
-			fmt.Printf("Server Message: User %s has connected in the %s namespace\n",
-				pushMessage.UserId, pushMessage.Namespace)
-		}
+func notifyConnection(clientConn net.Conn) {
+	buffer := make([]byte, 1024)
+	bytes_read, readErr := clientConn.Read(buffer)
+	if readErr != nil {
+		fmt.Println("Error occured while reading buffer in the app function")
+	}
+	pushMessage := message.PushMessage{}
+	pushErr := json.Unmarshal(buffer[:bytes_read], &pushMessage)
+	if pushErr != nil {
+		fmt.Println("Error occured while decoding push header in the app function")
+	}
+	if pushMessage.Header.ConnectionType == "push" {
+		fmt.Printf("Server Message: User %s has connected in the %s namespace\n",
+			pushMessage.UserId, pushMessage.Namespace)
 	}
 }
 
@@ -105,7 +104,7 @@ func initializeClient() *User {
 	}
 	var namespace string = os.Args[1]
 	var newId string = uuid.NewString()
-	isConnected, connectionId := establishConnection(conn,
+	isConnected, connectionId := establishWebsocketConnection(conn,
 		message.Request{
 			Namespace: namespace,
 			UserId:    newId,
@@ -119,9 +118,12 @@ func initializeClient() *User {
 	return &user
 }
 
-func establishConnection(conn net.Conn, msg message.Request) (bool, string) {
+func establishWebsocketConnection(conn net.Conn, msg message.Request) (bool, string) {
 	connectMessage := message.Request{
-		Header:          message.Header{ConnectionType: "connect", Protocol: "websocket"},
+		Header: message.Header{
+			ConnectionType: "connect",
+			Protocol:       "websocket",
+		},
 		Namespace:       msg.Namespace,
 		DateEstablished: "14051239084",
 		UserId:          msg.UserId}
@@ -145,7 +147,7 @@ func establishConnection(conn net.Conn, msg message.Request) (bool, string) {
 		}
 		if serverResponse.Status != "OK" {
 			fmt.Println("Connection Status: Failed")
-			return establishConnection(conn,
+			return establishWebsocketConnection(conn,
 				message.Request{
 					Namespace: msg.Namespace,
 					UserId:    msg.UserId,
