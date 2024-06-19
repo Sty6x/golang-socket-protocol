@@ -3,7 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
-	"go-tcp/internal/utils/messageTypes"
+	"go-tcp/internal/utils/message_types"
 )
 
 type JsonParser interface {
