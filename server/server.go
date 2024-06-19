@@ -23,43 +23,28 @@ type Namespace struct {
 }
 
 const PORT = ":8080"
+const BUFFERSIZE = 50
 
 var Namespaces = make(map[string]Namespace)
 var Users = make(map[string]User)
 
 func main() {
 	var app = setServerSocket()
-	clientMessageBuffer := make(chan message.PushMessage)
 
-	go func() {
-		for {
-			conn, err := app.Accept()
-			if err != nil {
-				fmt.Println("Unable to create a tcp connection")
-			}
-			clientMsg := message.PushMessage{}
-			buffer := make([]byte, 1024)
-			bytesRead, readerr := conn.Read(buffer)
-			if readerr != nil {
-				fmt.Println("Unable to create a tcp connection")
-			}
-			jsonErr := json.Unmarshal(buffer[:bytesRead], &clientMsg)
-			if jsonErr != nil {
-				fmt.Println("Unable to decode buffer.")
-			}
-			fmt.Printf("\n\n from Message listener: %+v\n", clientMsg)
-			clientMessageBuffer <- clientMsg
-		}
+	// having two listeners causes problems
+	// - listening for websocket connections
+	// - listening for push messages
 
-	}()
+	// use a single go routine or runnign process to listen to all of the requests from the client
+
+	clientMessageBuffer := make(chan message.PushMessage, BUFFERSIZE)
 	go func() {
 		for l := range clientMessageBuffer {
 			fmt.Printf("\n\n Push message: %+v\n", l)
-			// fmt.Println(l)
+			// send the client messages in the channel buffer
 		}
 	}()
-
-	startServer(app)
+	startServer(app, clientMessageBuffer)
 	app.Close()
 }
 
@@ -91,21 +76,36 @@ func setServerSocket() net.Listener {
 	return listener
 }
 
-func startServer(server net.Listener) {
+// server should handle listening to every connection types from the client
+func startServer(server net.Listener, messageBuffer chan message.PushMessage) {
 
 	fmt.Println("Server start at localhost:8080")
 	// Listens, Reads and Writes to the client.
 	for {
+
 		conn, err := server.Accept()
 		if err != nil {
 			fmt.Println("Unable to create a tcp connection")
 		}
-		userTcp, connectionType := establishTcpConnection(conn)
+		buffer := make([]byte, 1024)
+		bytesRead, buffErr := conn.Read(buffer)
+		if buffErr != nil {
+			fmt.Println("Cant Reaaaad")
+		}
+		userTcp, connectionType := establishTcpConnection(conn, buffer[:bytesRead])
 		if userTcp != nil {
 			if connectionType == "connect" {
 				successSocketConnection(userTcp)
 				ns, _ := Namespaces[userTcp.namespace]
 				go ns.notifyUsers(userTcp)
+			}
+			if connectionType == "push" {
+				clientMsg := message.PushMessage{}
+				err := json.Unmarshal(buffer[:bytesRead], &clientMsg)
+				if err != nil {
+					fmt.Println("Unable to decode client request header")
+				}
+				messageBuffer <- clientMsg
 			}
 			// TODO
 			// handle connected client messages
@@ -127,14 +127,8 @@ func successSocketConnection(user *User) {
 	user.conn.Write(encodedHeader)
 }
 
-func establishTcpConnection(conn net.Conn) (*User, string) {
-	buffer := make([]byte, 1024)
-	bytesRead, err := conn.Read(buffer)
-	if err != nil {
-		fmt.Println("Cant Reaaaad")
-		return nil, ""
-	}
-	parsedHeader := parseClientRequest(buffer[:bytesRead])
+func establishTcpConnection(conn net.Conn, buffer []byte) (*User, string) {
+	parsedHeader := parseClientRequest(buffer)
 	user, userExists := Users[parsedHeader.UserId]
 	if !userExists {
 		newUser := &User{ipAddr: conn.RemoteAddr().String(),
