@@ -46,7 +46,6 @@ func (ns *Namespace) NotifyUsers(userTcp *users.User) {
 	}
 	for _, user := range users {
 		if user.Namespace == ns.Name && user.UserId != userTcp.UserId {
-			fmt.Printf("\nConnection: %+v \n", user)
 			user.Conn.Write(encodedHeader)
 		}
 	}

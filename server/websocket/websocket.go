@@ -32,7 +32,7 @@ func RequestListener(userTcp *users.User, connectionType string, buffer []byte,
 }
 func sendWebsocketConnectionID(user *users.User) {
 	serverResponseHeader := message.Response{
-		Header:          message.Header{Protocol: "websocket", ConnectionType: "push"},
+		Header:          message.Header{Protocol: "websocket", ConnectionType: "connect"},
 		DateEstablished: "412908124",
 		Status:          "OK",
 		ConnectionId:    user.ConnectionId,

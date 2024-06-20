@@ -41,6 +41,9 @@ func New() UsersContainer {
 // using u.Conn.Write but is not reflected on the request Listener,
 // but when i connect other instances to the server they can still connect, which means the
 // request listerner on the server is not blocked.
+// Channel buffer is working as intended as the inputLoop() go routine,
+// sends data through the inputChan, the PushMessage receives the inputChan's buffer
+// which runs the for loop.
 func (u *User) PushMessage(inputChan chan string) {
 	for input := range inputChan {
 		if input == "\n" {
@@ -49,7 +52,10 @@ func (u *User) PushMessage(inputChan chan string) {
 		}
 		fmt.Printf("\nInput: %q\n", input)
 		clientMsg := message.PushMessage{
-			Header:          message.Header{Protocol: "websocket", ConnectionType: "connect"},
+			Header: message.Header{
+				Protocol:       "websocket",
+				ConnectionType: "connect",
+			},
 			ConnectionId:    u.ConnectionId,
 			Payload:         input,
 			Namespace:       u.Namespace,

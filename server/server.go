@@ -75,6 +75,7 @@ func establishTcpConnection(conn net.Conn, buffer []byte) (*users.User, string) 
 	if err != nil {
 		fmt.Println("Unable to decode client request header")
 	}
+	fmt.Printf("Client Request: %+v", clientRequest)
 	user, userExists := Users[clientRequest.UserId]
 	if !userExists {
 		newUser := &users.User{IpAddr: conn.RemoteAddr().String(),

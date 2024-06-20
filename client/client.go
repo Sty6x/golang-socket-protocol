@@ -72,7 +72,12 @@ func initializeClient() *users.User {
 			Namespace: namespace,
 			UserId:    newId,
 		})
-	user := users.User{UserId: newId, ConnectionId: connectionId, Namespace: namespace, Conn: conn} // creates the local user on the client side
+	fmt.Println(connectionId)
+	user := users.User{UserId: newId,
+		ConnectionId: connectionId,
+		Namespace:    namespace,
+		Conn:         conn,
+	} // creates the local user on the client side
 	if !isConnected {
 		fmt.Println("Unable to connect to the server at this moment.")
 		return nil
@@ -92,7 +97,11 @@ func establishWebsocketConnection(conn net.Conn, msg message.Request) (bool, str
 		UserId:          msg.UserId}
 	json := &utils.Json{}
 	encodedHeader := json.Encode(connectMessage)
-	conn.Write(encodedHeader)
+	_, writeErr := conn.Write(encodedHeader)
+	if writeErr != nil {
+		fmt.Println("Unable to write buffer to the server.")
+		return false, "Client error"
+	}
 	for {
 		buffer := make([]byte, 1024)
 		bytes_read, err := conn.Read(buffer)
@@ -101,12 +110,14 @@ func establishWebsocketConnection(conn net.Conn, msg message.Request) (bool, str
 			return false, ""
 		}
 		serverResponse := json.Decode(buffer[:bytes_read])
+		fmt.Printf("\n%s", serverResponse.Header.ConnectionType)
 		if serverResponse == nil {
 			fmt.Println("unable to decode")
-			continue
+			break
 		}
-		// huh?
+		// only accept connect connectionType for establishing a connection
 		if serverResponse.Header.ConnectionType != "connect" {
+			fmt.Println("\nWrong Connection type")
 			continue
 		}
 		if serverResponse.Status != "OK" {
@@ -119,4 +130,5 @@ func establishWebsocketConnection(conn net.Conn, msg message.Request) (bool, str
 		}
 		return true, serverResponse.ConnectionId
 	}
+	return false, "Disconnect"
 }
