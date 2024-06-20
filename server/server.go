@@ -27,8 +27,12 @@ func main() {
 			fmt.Printf("\n\n Push message: %+v\n", l)
 		}
 	}()
-	go startServer(app, clientMessageBuffer)
-	app.Close()
+	go func() {
+		// websocket listener should run indefiniteley
+		// to receive messages from clients
+		// go websocket.RequestListener(user, connectionType, pushMessageBuffer, messageBuffer)
+	}()
+	CreateTcpConnections(app)
 }
 
 func setServerSocket() net.Listener {
@@ -39,9 +43,7 @@ func setServerSocket() net.Listener {
 	return listener
 }
 
-// server should handle listening to every connection types from the client
-func startServer(server net.Listener, messageBuffer chan message.PushMessage) {
-	// Listens, Reads and Writes to the client.
+func CreateTcpConnections(server net.Listener) {
 	fmt.Println("Server starts at [::]:8080")
 	for {
 		conn, err := server.Accept() // Blocks all the process until there is a TCP CONNECTION IS ESTABLISHED
@@ -54,22 +56,20 @@ func startServer(server net.Listener, messageBuffer chan message.PushMessage) {
 			fmt.Println("Unable to read client request buffer.")
 			continue
 		}
-
-		// Test line to see if clients sends different connection types aside from connect
-		// seems that when using PushMessage() from the client, the server does not receive anything aside from
-		// the first exchange.
 		fmt.Println("Message received from client") // does not trigger on
 		userTcp, connectionType := establishTcpConnection(conn, buffer)
 		if userTcp == nil {
 			fmt.Println("Unable to establish tcp connection")
 			continue
 		}
-		go websocket.RequestListener(userTcp, connectionType, buffer, messageBuffer)
+		if connectionType == "connect" {
+			websocket.SendWebsocketConnectionID(userTcp)
+			ns, _ := Namespaces[userTcp.Namespace]
+			go ns.NotifyNamespaceUsers(userTcp)
+		}
 	}
 }
 
-// On PushMessage from the client this doesn't run, only when client's first
-// push message (establishing a connection with the server)
 func establishTcpConnection(conn net.Conn, buffer []byte) (*users.User, string) {
 	clientRequest := message.Request{}
 	err := json.Unmarshal(buffer, &clientRequest)
