@@ -9,7 +9,7 @@ import (
 	"go-tcp/internal/utils/buffer_utils"
 	"go-tcp/internal/utils/message_types"
 	"go-tcp/internal/utils/server_utils"
-	"go-tcp/internal/websocket"
+	"go-tcp/server/websocket"
 	"net"
 )
 
@@ -51,44 +51,35 @@ func startServer(server net.Listener, messageBuffer chan message.PushMessage) {
 			fmt.Println("Unable to create a tcp connection")
 		}
 		buffer := buffer.Decoder(conn)
-		if buffer != nil {
+		if buffer == nil {
 			fmt.Println("Unable to read client request buffer.")
+			continue
 		}
 		userTcp, connectionType := establishTcpConnection(conn, buffer)
 		if userTcp == nil {
 			fmt.Println("Unable to establish tcp connection")
 			continue
 		}
-		websocket.RequestListeners(userTcp, connectionType, buffer, messageBuffer)
+		websocket.RequestListener(userTcp, connectionType, buffer, messageBuffer)
 	}
-}
-
-func successSocketConnection(user *users.User) {
-	serverResponseHeader := message.Response{
-		Header:          message.Header{Protocol: "Websocket", ConnectionType: "connect"},
-		DateEstablished: "412908124",
-		Status:          "OK",
-		ConnectionId:    user.ConnectionId,
-	}
-	encodedHeader, err := json.Marshal(serverResponseHeader)
-	if err != nil {
-		fmt.Println("Unable to encode server response header.")
-	}
-	user.Conn.Write(encodedHeader)
 }
 
 func establishTcpConnection(conn net.Conn, buffer []byte) (*users.User, string) {
-	parsedHeader := parseClientRequest(buffer)
-	user, userExists := Users[parsedHeader.UserId]
+	clientRequest := message.Request{}
+	err := json.Unmarshal(buffer, &clientRequest)
+	if err != nil {
+		fmt.Println("Unable to decode client request header")
+	}
+	user, userExists := Users[clientRequest.UserId]
 	if !userExists {
 		newUser := &users.User{IpAddr: conn.RemoteAddr().String(),
-			UserId: parsedHeader.UserId, Conn: conn,
-			Namespace: parsedHeader.Namespace, ConnectionId: uuid.NewString()}
+			UserId: clientRequest.UserId, Conn: conn,
+			Namespace: clientRequest.Namespace, ConnectionId: uuid.NewString()}
 		createUser(newUser)
-		return newUser, parsedHeader.ConnectionType
+		return newUser, clientRequest.ConnectionType
 	}
 	fmt.Printf("\n%v", Namespaces[user.Namespace])
-	return &user, parsedHeader.ConnectionType
+	return &user, clientRequest.ConnectionType
 }
 
 func createUser(newUser *users.User) {
@@ -104,16 +95,6 @@ func createUser(newUser *users.User) {
 		ns = namespaces.Namespace{Name: newUser.Namespace, ConnectedUsers: append(ns.ConnectedUsers[:],
 			newUser.ConnectionId)}
 		Namespaces[newUser.Namespace] = ns
-
 	}
 	fmt.Printf("\n%v", Namespaces[newUser.Namespace])
-}
-
-func parseClientRequest(h []byte) *message.Request {
-	clientRequestHeader := message.Request{}
-	err := json.Unmarshal(h, &clientRequestHeader)
-	if err != nil {
-		fmt.Println("Unable to decode client request header")
-	}
-	return &clientRequestHeader
 }

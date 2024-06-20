@@ -8,11 +8,11 @@ import (
 	"go-tcp/internal/utils/message_types"
 )
 
-func RequestListeners(userTcp *users.User, connectionType string, buffer []byte,
+func RequestListener(userTcp *users.User, connectionType string, buffer []byte,
 	messageBuffer chan message.PushMessage) {
 	NS := namespaces.New()
 	if connectionType == "connect" {
-		onSuccess(userTcp)
+		sendWebsocketConnectionID(userTcp)
 		ns, _ := NS[userTcp.Namespace]
 		go ns.NotifyUsers(userTcp)
 	}
@@ -26,7 +26,7 @@ func RequestListeners(userTcp *users.User, connectionType string, buffer []byte,
 	}
 
 }
-func onSuccess(user *users.User) {
+func sendWebsocketConnectionID(user *users.User) {
 	serverResponseHeader := message.Response{
 		Header:          message.Header{Protocol: "Websocket", ConnectionType: "connect"},
 		DateEstablished: "412908124",

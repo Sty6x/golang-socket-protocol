@@ -44,11 +44,13 @@ func serverListener(clientConn net.Conn) {
 		bytes_read, readErr := clientConn.Read(buffer)
 		if readErr != nil {
 			fmt.Println("Error occured while reading buffer in the app function")
+			break
 		}
 		pushMessage := message.PushMessage{}
 		pushErr := json.Unmarshal(buffer[:bytes_read], &pushMessage)
 		if pushErr != nil {
 			fmt.Println("Error occured while decoding push header in the app function")
+			break
 		}
 
 		if pushMessage.Header.ConnectionType == "push" {
