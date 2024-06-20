@@ -14,7 +14,7 @@ type Namespace struct {
 }
 
 type NamespaceMethods interface {
-	notifyUsers(userTcp *users.User)
+	NotifyNamespaceUsers(userTcp *users.User)
 }
 
 type NamespaceContainer map[string]Namespace
@@ -31,7 +31,7 @@ func New() NamespaceContainer {
 	return instance
 }
 
-func (ns *Namespace) NotifyUsers(userTcp *users.User) {
+func (ns *Namespace) NotifyNamespaceUsers(userTcp *users.User) {
 	users := users.New()
 	responseHeader := message.PushMessage{
 		Header:    message.Header{Protocol: "Websocket", ConnectionType: "push"},

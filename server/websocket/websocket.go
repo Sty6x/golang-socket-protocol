@@ -25,11 +25,14 @@ func RequestListener(userTcp *users.User, connectionType string, buffer []byte,
 	if connectionType == "connect" {
 		sendWebsocketConnectionID(userTcp)
 		ns, _ := NS[userTcp.Namespace]
-		go ns.NotifyUsers(userTcp)
+		go ns.NotifyNamespaceUsers(userTcp)
 		return
 	}
 
 }
+
+// sends the a websocket connection ID back to client
+// In IP6 ::1.8080 > ::1.<Client Ephemeral Port>: Flags [P.], seq 1:150, ack 151, win 512, options [nop,nop,TS val 639010820 ecr 639010819], length 149: HTTP
 func sendWebsocketConnectionID(user *users.User) {
 	serverResponseHeader := message.Response{
 		Header:          message.Header{Protocol: "websocket", ConnectionType: "connect"},

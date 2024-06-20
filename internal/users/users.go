@@ -33,17 +33,6 @@ func New() UsersContainer {
 	return instance
 }
 
-// When initializing the client (sending a "connect" connectionTYpe) to establish
-// a TCP connection and then the server would then send a websocket connectionId that belongs
-// to a Namespace in the server, after tcp handshake and the server providing a ConnectionId,
-// but when a client tries to use the PushMessage function after we establish a websocket
-// communication to write data to the same tcp Connection, it says that it writes data
-// using u.Conn.Write but is not reflected on the request Listener,
-// but when i connect other instances to the server they can still connect, which means the
-// request listerner on the server is not blocked.
-// Channel buffer is working as intended as the inputLoop() go routine,
-// sends data through the inputChan, the PushMessage receives the inputChan's buffer
-// which runs the for loop.
 func (u *User) PushMessage(inputChan chan string) {
 	for input := range inputChan {
 		if input == "\n" {
@@ -67,7 +56,7 @@ func (u *User) PushMessage(inputChan chan string) {
 			fmt.Println("Unable to encode push message")
 		}
 		bytesWritten, writeErr := u.Conn.Write(encodedHeader)
-		fmt.Printf("Sent: %d\n", bytesWritten) // this line runs so that means it should write to the server.
+		fmt.Printf("Sent: %d\n", bytesWritten)
 		if writeErr != nil {
 			fmt.Println("Unable to write push message")
 		}

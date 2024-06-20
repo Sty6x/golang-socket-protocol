@@ -54,7 +54,7 @@ func serverListener(clientConn net.Conn) {
 		}
 
 		if pushMessage.Header.ConnectionType == "push" {
-			fmt.Printf("Server Message: User %s has connected in the %s namespace\n",
+			fmt.Printf("\nServer Message: User %s has connected in the %s namespace\n",
 				pushMessage.UserId, pushMessage.Namespace)
 		}
 	}
@@ -62,6 +62,8 @@ func serverListener(clientConn net.Conn) {
 
 func initializeClient() *users.User {
 	conn, err := net.Dial("tcp", "localhost:8080")
+	// In  IP6 ::1.<Client Ephemeral Port> > ::1.8080: Flags [S], seq 995990637, win 65476, options [mss 65476,sackOK,TS val 639010819 ecr 0,nop,wscale 7], length 0
+	// In  IP6 ::1.8080 > ::1.<Client Ephemeral Port>: Flags [S.], seq 1471586355, ack 995990638, win 65464, options [mss 65476,sackOK,TS val 639010819 ecr 639010819,nop,wscale 7], length 0
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -86,6 +88,8 @@ func initializeClient() *users.User {
 	return &user
 }
 
+// In  IP6 ::1.<Client Ephemeral Port> > ::1.8080: Flags [.], ack 1, win 512, options [nop,nop,TS val 639010819 ecr 639010819], length 0
+// In  IP6 ::1.<Client Ephemeral Port> > ::1.8080: Flags [P.], seq 1:151, ack 1, win 512, options [nop,nop,TS val 639010819 ecr 639010819], length 150: HTTP
 func establishWebsocketConnection(conn net.Conn, msg message.Request) (bool, string) {
 	connectMessage := message.Request{
 		Header: message.Header{
@@ -96,7 +100,7 @@ func establishWebsocketConnection(conn net.Conn, msg message.Request) (bool, str
 		DateEstablished: "14051239084",
 		UserId:          msg.UserId}
 	json := &utils.Json{}
-	encodedHeader := json.Encode(connectMessage)
+	encodedHeader := json.Encode(connectMessage) // along with ack after tcp handshake
 	_, writeErr := conn.Write(encodedHeader)
 	if writeErr != nil {
 		fmt.Println("Unable to write buffer to the server.")

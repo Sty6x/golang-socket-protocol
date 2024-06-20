@@ -21,13 +21,13 @@ var Users = users.New()
 
 func main() {
 	var app = setServerSocket()
-	clientMessageBuffer := make(chan message.PushMessage, BUFFERSIZE)
+	clientMessageBuffer := make(chan message.PushMessage)
 	go func() {
 		for l := range clientMessageBuffer {
 			fmt.Printf("\n\n Push message: %+v\n", l)
 		}
 	}()
-	startServer(app, clientMessageBuffer)
+	go startServer(app, clientMessageBuffer)
 	app.Close()
 }
 
@@ -44,7 +44,8 @@ func startServer(server net.Listener, messageBuffer chan message.PushMessage) {
 	// Listens, Reads and Writes to the client.
 	fmt.Println("Server starts at [::]:8080")
 	for {
-		conn, err := server.Accept()
+		conn, err := server.Accept() // Blocks all the process until there is a TCP CONNECTION IS ESTABLISHED
+		fmt.Println("Test")
 		if err != nil {
 			fmt.Println("Unable to create a tcp connection")
 		}
@@ -63,7 +64,7 @@ func startServer(server net.Listener, messageBuffer chan message.PushMessage) {
 			fmt.Println("Unable to establish tcp connection")
 			continue
 		}
-		websocket.RequestListener(userTcp, connectionType, buffer, messageBuffer)
+		go websocket.RequestListener(userTcp, connectionType, buffer, messageBuffer)
 	}
 }
 
