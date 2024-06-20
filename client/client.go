@@ -4,53 +4,14 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
+	"go-tcp/internal/users"
 	"go-tcp/internal/utils"
 	"go-tcp/internal/utils/message_types"
 	"net"
 	"os"
+
+	"github.com/google/uuid"
 )
-
-type User struct {
-	conn         net.Conn
-	namespace    string
-	connectionId string
-	userId       string
-}
-
-type UserMethods interface {
-	PushMessage(inputChan chan string)
-}
-
-func (u *User) PushMessage(inputChan chan string) {
-	for input := range inputChan {
-		if input == "\n" {
-			fmt.Printf("\nDont send an empty string %q\n", input)
-			continue
-		}
-		fmt.Printf("\nInput: %q\n", input)
-		clientMsg := message.PushMessage{
-			Header:          message.Header{Protocol: "websocket", ConnectionType: "push"},
-			ConnectionId:    u.connectionId,
-			Payload:         input,
-			Namespace:       u.namespace,
-			DateEstablished: "90123789035478",
-		}
-		fmt.Printf("Push Message: %+v", clientMsg)
-		encodedHeader, jsonErr := json.Marshal(clientMsg)
-		if jsonErr != nil {
-			fmt.Println("Unable to encode push message")
-		}
-		// TODO unable to write back to the server, the line below
-		// is not able to write for some reason, and does not throw any errors
-
-		// running process is not triggering Write even if we're connected with the server
-		_, writeErr := u.conn.Write(encodedHeader)
-		if writeErr != nil {
-			fmt.Println("Unable to write push message")
-		}
-	}
-}
 
 func main() {
 	user := initializeClient()
@@ -60,7 +21,7 @@ func main() {
 	inputChan := make(chan string)
 	go inputLoop(inputChan)
 	go user.PushMessage(inputChan)
-	serverListener(user.conn) // listening to the server
+	serverListener(user.Conn) // listening to the server
 	close(inputChan)
 }
 
@@ -83,14 +44,13 @@ func serverListener(clientConn net.Conn) {
 		bytes_read, readErr := clientConn.Read(buffer)
 		if readErr != nil {
 			fmt.Println("Error occured while reading buffer in the app function")
-			continue
 		}
 		pushMessage := message.PushMessage{}
 		pushErr := json.Unmarshal(buffer[:bytes_read], &pushMessage)
 		if pushErr != nil {
 			fmt.Println("Error occured while decoding push header in the app function")
-			continue
 		}
+
 		if pushMessage.Header.ConnectionType == "push" {
 			fmt.Printf("Server Message: User %s has connected in the %s namespace\n",
 				pushMessage.UserId, pushMessage.Namespace)
@@ -98,7 +58,7 @@ func serverListener(clientConn net.Conn) {
 	}
 }
 
-func initializeClient() *User {
+func initializeClient() *users.User {
 	conn, err := net.Dial("tcp", "localhost:8080")
 	if err != nil {
 		fmt.Println(err)
@@ -110,7 +70,7 @@ func initializeClient() *User {
 			Namespace: namespace,
 			UserId:    newId,
 		})
-	user := User{userId: newId, connectionId: connectionId, namespace: namespace, conn: conn}
+	user := users.User{UserId: newId, ConnectionId: connectionId, Namespace: namespace, Conn: conn}
 	if !isConnected {
 		fmt.Println("Unable to connect to the server at this moment.")
 		return nil

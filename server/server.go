@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"go-tcp/internal/namespaces"
+	"go-tcp/internal/users"
 	"go-tcp/internal/utils/buffer_utils"
-	"go-tcp/internal/utils/global_types"
 	"go-tcp/internal/utils/message_types"
 	"go-tcp/internal/utils/server_utils"
 	"go-tcp/internal/websocket"
@@ -17,7 +17,7 @@ const PORT = ":8080"
 const BUFFERSIZE = 50
 
 var Namespaces = namespaces.New()
-var Users = make(map[string]types.User)
+var Users = users.New()
 
 func main() {
 	var app = setServerSocket()
@@ -63,7 +63,7 @@ func startServer(server net.Listener, messageBuffer chan message.PushMessage) {
 	}
 }
 
-func successSocketConnection(user *types.User) {
+func successSocketConnection(user *users.User) {
 	serverResponseHeader := message.Response{
 		Header:          message.Header{Protocol: "Websocket", ConnectionType: "connect"},
 		DateEstablished: "412908124",
@@ -77,11 +77,11 @@ func successSocketConnection(user *types.User) {
 	user.Conn.Write(encodedHeader)
 }
 
-func establishTcpConnection(conn net.Conn, buffer []byte) (*types.User, string) {
+func establishTcpConnection(conn net.Conn, buffer []byte) (*users.User, string) {
 	parsedHeader := parseClientRequest(buffer)
 	user, userExists := Users[parsedHeader.UserId]
 	if !userExists {
-		newUser := &types.User{IpAddr: conn.RemoteAddr().String(),
+		newUser := &users.User{IpAddr: conn.RemoteAddr().String(),
 			UserId: parsedHeader.UserId, Conn: conn,
 			Namespace: parsedHeader.Namespace, ConnectionId: uuid.NewString()}
 		createUser(newUser)
@@ -91,7 +91,7 @@ func establishTcpConnection(conn net.Conn, buffer []byte) (*types.User, string) 
 	return &user, parsedHeader.ConnectionType
 }
 
-func createUser(newUser *types.User) {
+func createUser(newUser *users.User) {
 	Users[newUser.UserId] = *newUser
 	ns, ok := Namespaces[newUser.Namespace]
 	if !ok {

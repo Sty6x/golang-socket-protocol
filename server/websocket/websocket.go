@@ -4,14 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"go-tcp/internal/namespaces"
-	"go-tcp/internal/utils/global_types"
+	"go-tcp/internal/users"
 	"go-tcp/internal/utils/message_types"
 )
 
-func RequestListeners(userTcp *types.User, connectionType string, buffer []byte, messageBuffer chan message.PushMessage) {
+func RequestListeners(userTcp *users.User, connectionType string, buffer []byte,
+	messageBuffer chan message.PushMessage) {
 	NS := namespaces.New()
 	if connectionType == "connect" {
-		successSocketConnection(userTcp)
+		onSuccess(userTcp)
 		ns, _ := NS[userTcp.Namespace]
 		go ns.NotifyUsers(userTcp)
 	}
@@ -25,7 +26,7 @@ func RequestListeners(userTcp *types.User, connectionType string, buffer []byte,
 	}
 
 }
-func successSocketConnection(user *types.User) {
+func onSuccess(user *users.User) {
 	serverResponseHeader := message.Response{
 		Header:          message.Header{Protocol: "Websocket", ConnectionType: "connect"},
 		DateEstablished: "412908124",

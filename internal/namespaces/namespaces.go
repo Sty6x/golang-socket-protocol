@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"go-tcp/internal/users"
-	"go-tcp/internal/utils/global_types"
 	"go-tcp/internal/utils/message_types"
 	"sync"
 )
@@ -15,7 +14,7 @@ type Namespace struct {
 }
 
 type NamespaceMethods interface {
-	notifyUsers(userTcp *types.User)
+	notifyUsers(userTcp *users.User)
 }
 
 type NamespaceContainer map[string]Namespace
@@ -32,7 +31,7 @@ func New() NamespaceContainer {
 	return instance
 }
 
-func (ns *Namespace) NotifyUsers(userTcp *types.User) {
+func (ns *Namespace) NotifyUsers(userTcp *users.User) {
 	users := users.New()
 	responseHeader := message.PushMessage{
 		Header:    message.Header{Protocol: "Websocket", ConnectionType: "push"},
