@@ -4,13 +4,12 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"go-tcp/internal/users"
 	"go-tcp/internal/utils"
 	"go-tcp/internal/utils/message_types"
 	"net"
 	"os"
-
-	"github.com/google/uuid"
 )
 
 func main() {
@@ -38,6 +37,7 @@ func inputLoop(inputChan chan string) {
 	}
 }
 
+// This thing works it can listen to any connection type from server
 func serverListener(clientConn net.Conn) {
 	for {
 		buffer := make([]byte, 1024)
@@ -72,7 +72,7 @@ func initializeClient() *users.User {
 			Namespace: namespace,
 			UserId:    newId,
 		})
-	user := users.User{UserId: newId, ConnectionId: connectionId, Namespace: namespace, Conn: conn}
+	user := users.User{UserId: newId, ConnectionId: connectionId, Namespace: namespace, Conn: conn} // creates the local user on the client side
 	if !isConnected {
 		fmt.Println("Unable to connect to the server at this moment.")
 		return nil
@@ -105,6 +105,7 @@ func establishWebsocketConnection(conn net.Conn, msg message.Request) (bool, str
 			fmt.Println("unable to decode")
 			continue
 		}
+		// huh?
 		if serverResponse.Header.ConnectionType != "connect" {
 			continue
 		}

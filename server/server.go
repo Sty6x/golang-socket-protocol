@@ -25,7 +25,6 @@ func main() {
 	go func() {
 		for l := range clientMessageBuffer {
 			fmt.Printf("\n\n Push message: %+v\n", l)
-			// send the client messages in the channel buffer
 		}
 	}()
 	startServer(app, clientMessageBuffer)
@@ -42,9 +41,8 @@ func setServerSocket() net.Listener {
 
 // server should handle listening to every connection types from the client
 func startServer(server net.Listener, messageBuffer chan message.PushMessage) {
-
-	fmt.Println("Server start at localhost:8080")
 	// Listens, Reads and Writes to the client.
+	fmt.Println("Server starts at [::]:8080")
 	for {
 		conn, err := server.Accept()
 		if err != nil {
@@ -55,6 +53,11 @@ func startServer(server net.Listener, messageBuffer chan message.PushMessage) {
 			fmt.Println("Unable to read client request buffer.")
 			continue
 		}
+
+		// Test line to see if clients sends different connection types aside from connect
+		// seems that when using PushMessage() from the client, the server does not receive anything aside from
+		// the first exchange.
+		fmt.Println("Message received from client") // does not trigger on
 		userTcp, connectionType := establishTcpConnection(conn, buffer)
 		if userTcp == nil {
 			fmt.Println("Unable to establish tcp connection")
@@ -64,6 +67,8 @@ func startServer(server net.Listener, messageBuffer chan message.PushMessage) {
 	}
 }
 
+// On PushMessage from the client this doesn't run, only when client's first
+// push message (establishing a connection with the server)
 func establishTcpConnection(conn net.Conn, buffer []byte) (*users.User, string) {
 	clientRequest := message.Request{}
 	err := json.Unmarshal(buffer, &clientRequest)
@@ -76,10 +81,10 @@ func establishTcpConnection(conn net.Conn, buffer []byte) (*users.User, string) 
 			UserId: clientRequest.UserId, Conn: conn,
 			Namespace: clientRequest.Namespace, ConnectionId: uuid.NewString()}
 		createUser(newUser)
-		return newUser, clientRequest.ConnectionType
+		return newUser, clientRequest.Header.ConnectionType
 	}
 	fmt.Printf("\n%v", Namespaces[user.Namespace])
-	return &user, clientRequest.ConnectionType
+	return &user, clientRequest.Header.ConnectionType
 }
 
 func createUser(newUser *users.User) {
