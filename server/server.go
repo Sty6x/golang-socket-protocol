@@ -24,15 +24,10 @@ func main() {
 	clientMessageBuffer := make(chan message.PushMessage)
 	go func() {
 		for l := range clientMessageBuffer {
-			fmt.Printf("\n\n Push message: %+v\n", l)
+			fmt.Printf("\nMessage from %s: %+v\n", l.UserId, l.Payload)
 		}
 	}()
-	go func() {
-		// websocket listener should run indefiniteley
-		// to receive messages from clients
-		// go websocket.RequestListener(user, connectionType, pushMessageBuffer, messageBuffer)
-	}()
-	CreateTcpConnections(app)
+	CreateTcpConnections(app, clientMessageBuffer)
 }
 
 func setServerSocket() net.Listener {
@@ -43,7 +38,7 @@ func setServerSocket() net.Listener {
 	return listener
 }
 
-func CreateTcpConnections(server net.Listener) {
+func CreateTcpConnections(server net.Listener, clientMessageBuffer chan message.PushMessage) {
 	fmt.Println("Server starts at [::]:8080")
 	for {
 		conn, err := server.Accept() // Blocks all the process until there is a TCP CONNECTION IS ESTABLISHED
@@ -63,10 +58,11 @@ func CreateTcpConnections(server net.Listener) {
 			continue
 		}
 		if connectionType == "connect" {
-			websocket.SendWebsocketConnectionID(userTcp)
-			ns, _ := Namespaces[userTcp.Namespace]
-			go ns.NotifyNamespaceUsers(userTcp)
+			websocket.NewConnectionHandler(userTcp)
 		}
+		// creates a request listener for every new client connection
+		go websocket.RequestListener(conn, clientMessageBuffer)
+
 	}
 }
 

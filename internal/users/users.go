@@ -43,9 +43,10 @@ func (u *User) PushMessage(inputChan chan string) {
 		clientMsg := message.PushMessage{
 			Header: message.Header{
 				Protocol:       "websocket",
-				ConnectionType: "connect",
+				ConnectionType: "push",
 			},
 			ConnectionId:    u.ConnectionId,
+			UserId:          u.UserId,
 			Payload:         input,
 			Namespace:       u.Namespace,
 			DateEstablished: "90123789035478",

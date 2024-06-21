@@ -3,28 +3,33 @@ package websocket
 import (
 	"encoding/json"
 	"fmt"
+	"go-tcp/internal/namespaces"
 	"go-tcp/internal/users"
 	"go-tcp/internal/utils/message_types"
+	"net"
 )
 
 // This thing works it can listen to any connection type from the client.
 // @Params
 // - user: to read a user requests from user.Conn.Read().
 // - pushMessageBuffer: to pass data through the channel buffer for pushing the messages.
-func RequestListener(user *users.User, messageBuffer chan message.PushMessage) {
-	pushMessageBuffer := make([]byte, 1024)
-	bytesRead, err := user.Conn.Read(pushMessageBuffer)
-	if err != nil {
-		fmt.Println("Error reading pushed message from websocket listener.")
-	}
-	clientMsg := message.PushMessage{}
-	jsonErr := json.Unmarshal(pushMessageBuffer[:bytesRead], &clientMsg)
-	if jsonErr != nil {
-		fmt.Println("Unable to decode client request header")
-	}
-	fmt.Println("Received")
-	if clientMsg.Header.ConnectionType == "push" {
-		messageBuffer <- clientMsg
+func RequestListener(client net.Conn, messageBuffer chan message.PushMessage) {
+	for {
+		pushMessageBuffer := make([]byte, 1024)
+		bytesRead, err := client.Read(pushMessageBuffer)
+		if err != nil {
+			fmt.Println("Error reading pushed message from websocket listener.")
+			break
+		}
+		clientMsg := message.PushMessage{}
+		jsonErr := json.Unmarshal(pushMessageBuffer[:bytesRead], &clientMsg)
+		if jsonErr != nil {
+			fmt.Println("Unable to decode client request header")
+			break
+		}
+		if clientMsg.Header.ConnectionType == "push" {
+			messageBuffer <- clientMsg
+		}
 	}
 }
 
@@ -42,4 +47,11 @@ func SendWebsocketConnectionID(user *users.User) {
 		fmt.Println("Unable to encode server response header.")
 	}
 	user.Conn.Write(encodedHeader)
+}
+
+func NewConnectionHandler(user *users.User) {
+	Namespaces := namespaces.New()
+	SendWebsocketConnectionID(user)
+	ns, _ := Namespaces[user.Namespace]
+	go ns.NotifyNamespaceUsers(user)
 }
