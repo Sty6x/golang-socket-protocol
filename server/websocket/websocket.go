@@ -55,3 +55,16 @@ func NewConnectionHandler(user *users.User) {
 	ns, _ := Namespaces[user.Namespace]
 	go ns.NotifyNamespaceUsers(user)
 }
+
+func RelayClientMessages(messageBuffer chan message.PushMessage) {
+	Namespaces := namespaces.New()
+	for clientMessage := range messageBuffer {
+		fmt.Printf("\nMessage from %s: %+v\n", clientMessage.UserId, clientMessage.Payload)
+		userNamespace, ok := Namespaces[clientMessage.Namespace]
+		if !ok {
+			fmt.Printf("Namespace does not existc")
+			continue
+		}
+		userNamespace.PushClientMessage(clientMessage)
+	}
+}

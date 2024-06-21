@@ -51,13 +51,11 @@ func (u *User) PushMessage(inputChan chan string) {
 			Namespace:       u.Namespace,
 			DateEstablished: "90123789035478",
 		}
-		fmt.Printf("\nPush Message: %+v\n", clientMsg)
 		encodedHeader, jsonErr := json.Marshal(clientMsg)
 		if jsonErr != nil {
 			fmt.Println("Unable to encode push message")
 		}
-		bytesWritten, writeErr := u.Conn.Write(encodedHeader)
-		fmt.Printf("Sent: %d\n", bytesWritten)
+		_, writeErr := u.Conn.Write(encodedHeader)
 		if writeErr != nil {
 			fmt.Println("Unable to write push message")
 		}
