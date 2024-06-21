@@ -22,11 +22,17 @@ var Users = users.New()
 func main() {
 	var app = setServerSocket()
 	clientMessageBuffer := make(chan message.PushMessage)
-	go func() {
-		for l := range clientMessageBuffer {
-			fmt.Printf("\nMessage from %s: %+v\n", l.UserId, l.Payload)
+	go func(messageBuffer chan message.PushMessage) {
+		for clientMessage := range messageBuffer {
+			fmt.Printf("\nMessage from %s: %+v\n", clientMessage.UserId, clientMessage.Payload)
+			userNamespace, ok := Namespaces[clientMessage.Namespace]
+			if !ok {
+				fmt.Printf("Namespace does not existc")
+				continue
+			}
+			userNamespace.PushClientMessage(clientMessage)
 		}
-	}()
+	}(clientMessageBuffer)
 	CreateTcpConnections(app, clientMessageBuffer)
 }
 

@@ -34,7 +34,7 @@ func New() NamespaceContainer {
 func (ns *Namespace) NotifyNamespaceUsers(userTcp *users.User) {
 	users := users.New()
 	responseHeader := message.PushMessage{
-		Header:    message.Header{Protocol: "Websocket", ConnectionType: "push"},
+		Header:    message.Header{Protocol: "Websocket", ConnectionType: "push", Origin: "server"},
 		Namespace: userTcp.Namespace,
 		Status:    "OK",
 		UserId:    userTcp.UserId,
@@ -46,6 +46,27 @@ func (ns *Namespace) NotifyNamespaceUsers(userTcp *users.User) {
 	}
 	for _, user := range users {
 		if user.Namespace == ns.Name && user.UserId != userTcp.UserId {
+			user.Conn.Write(encodedHeader)
+		}
+	}
+}
+
+func (ns *Namespace) PushClientMessage(clientMessage message.PushMessage) {
+	users := users.New()
+	responseHeader := message.PushMessage{
+		Header:    message.Header{Protocol: "Websocket", ConnectionType: "push", Origin: "client"},
+		Namespace: clientMessage.Namespace,
+		Status:    "OK",
+		UserId:    clientMessage.UserId,
+		Payload:   clientMessage.Payload,
+	}
+	encodedHeader, err := json.Marshal(responseHeader)
+	if err != nil {
+		fmt.Println("Unable to encode notification header")
+		return
+	}
+	for _, user := range users {
+		if user.Namespace == ns.Name && user.UserId != clientMessage.UserId {
 			user.Conn.Write(encodedHeader)
 		}
 	}

@@ -3,6 +3,7 @@ package message
 type Header struct {
 	Protocol       string
 	ConnectionType string
+	Origin         string
 }
 
 type Request struct {

@@ -52,10 +52,13 @@ func serverListener(clientConn net.Conn) {
 			fmt.Println("Error occured while decoding push header in the app function")
 			break
 		}
-
 		if pushMessage.Header.ConnectionType == "push" {
-			fmt.Printf("\nServer Message: User %s has connected in the %s namespace\n",
-				pushMessage.UserId, pushMessage.Namespace)
+			if pushMessage.Header.Origin == "server" {
+				fmt.Printf("\nServer Message: User %s has connected in the %s namespace\n",
+					pushMessage.UserId, pushMessage.Namespace)
+				continue
+			}
+			fmt.Printf("\nClient %s: %s \n", pushMessage.UserId, pushMessage.Payload)
 		}
 	}
 }
