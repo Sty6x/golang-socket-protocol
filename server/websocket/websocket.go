@@ -59,7 +59,7 @@ func NewConnectionHandler(user *users.User) {
 func RelayClientMessages(messageBuffer chan message.PushMessage) {
 	Namespaces := namespaces.New()
 	for clientMessage := range messageBuffer {
-		fmt.Printf("\nMessage from %s: %+v\n", clientMessage.UserId, clientMessage.Payload)
+		fmt.Printf("\nLog Message: A Push Message from %s to %s the namespace", clientMessage.UserId, clientMessage.Namespace)
 		userNamespace, ok := Namespaces[clientMessage.Namespace]
 		if !ok {
 			fmt.Printf("Namespace does not existc")

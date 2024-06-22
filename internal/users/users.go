@@ -39,7 +39,6 @@ func (u *User) PushMessage(inputChan chan string) {
 			fmt.Printf("\nDont send an empty string %q\n", input)
 			continue
 		}
-		fmt.Printf("\nInput: %q\n", input)
 		clientMsg := message.PushMessage{
 			Header: message.Header{
 				Protocol:       "websocket",

@@ -37,7 +37,6 @@ func CreateTcpConnections(server net.Listener, clientMessageBuffer chan message.
 	fmt.Println("Server starts at [::]:8080")
 	for {
 		conn, err := server.Accept() // Blocks all the process until a new TCP CONNECTION IS ESTABLISHED
-		fmt.Println("Test")
 		if err != nil {
 			fmt.Println("Unable to create a tcp connection")
 		}
@@ -46,7 +45,6 @@ func CreateTcpConnections(server net.Listener, clientMessageBuffer chan message.
 			fmt.Println("Unable to read client request buffer.")
 			continue
 		}
-		fmt.Println("Message received from client")
 		userTcp, connectionType := establishTcpConnection(conn, buffer)
 		if userTcp == nil {
 			fmt.Println("Unable to establish tcp connection")
@@ -67,7 +65,7 @@ func establishTcpConnection(conn net.Conn, buffer []byte) (*users.User, string) 
 	if err != nil {
 		fmt.Println("Unable to decode client request header")
 	}
-	fmt.Printf("Client Request: %+v", clientRequest)
+	fmt.Printf("Log Message: client %s has established a connection\n", clientRequest.UserId)
 	user, userExists := Users[clientRequest.UserId]
 	if !userExists {
 		newUser, connectionType := createUser(clientRequest, conn)

@@ -58,7 +58,7 @@ func serverListener(clientConn net.Conn) {
 					pushMessage.UserId, pushMessage.Namespace)
 				continue
 			}
-			fmt.Printf("\nClient %s: %s \n", pushMessage.UserId, pushMessage.Payload)
+			fmt.Printf("\n%s says: %s\n", pushMessage.UserId, pushMessage.Payload)
 		}
 	}
 }
@@ -77,7 +77,6 @@ func initializeClient() *users.User {
 			Namespace: namespace,
 			UserId:    newId,
 		})
-	fmt.Println(connectionId)
 	user := users.User{UserId: newId,
 		ConnectionId: connectionId,
 		Namespace:    namespace,
@@ -117,7 +116,6 @@ func establishWebsocketConnection(conn net.Conn, msg message.Request) (bool, str
 			return false, ""
 		}
 		serverResponse := json.Decode(buffer[:bytes_read])
-		fmt.Printf("\n%s", serverResponse.Header.ConnectionType)
 		if serverResponse == nil {
 			fmt.Println("unable to decode")
 			break
